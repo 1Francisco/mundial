@@ -6,12 +6,13 @@ from flask import Flask, request, jsonify, render_template
 from feature_engineering import estimate_market_value
 
 
-app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
 
-# Rutas de los archivos
-MODEL_PATH = "data/world_cup_model.pkl"
-SCALER_PATH = "data/scaler.pkl"
-STATS_PATH = "data/latest_stats.pkl"
+# Rutas de los archivos (relativas al directorio de app.py)
+MODEL_PATH = os.path.join(BASE_DIR, "data", "world_cup_model.pkl")
+SCALER_PATH = os.path.join(BASE_DIR, "data", "scaler.pkl")
+STATS_PATH = os.path.join(BASE_DIR, "data", "latest_stats.pkl")
 
 # Variables globales para cargar en memoria al iniciar el servidor
 model = None
