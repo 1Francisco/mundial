@@ -1,0 +1,2145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictor FIFA - Red Neuronal</title>
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080c14;
+            --card-bg: rgba(17, 24, 39, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #00e5ff;
+            --primary-glow: rgba(0, 229, 255, 0.35);
+            --secondary: #ff007f;
+            --secondary-glow: rgba(255, 0, 127, 0.35);
+            --neutral-glow: rgba(255, 255, 255, 0.1);
+            --accent: #00ff87;
+            --text-color: #f3f4f6;
+            --text-muted: #9ca3af;
+            --font-title: 'Outfit', sans-serif;
+            --font-body: 'Inter', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(0, 229, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(255, 0, 127, 0.05) 0%, transparent 40%);
+            background-attachment: fixed;
+            color: var(--text-color);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Header Premium */
+        header {
+            text-align: center;
+            margin-bottom: 1rem;
+            animation: fadeInDown 0.8s ease;
+        }
+
+        header h1 {
+            font-family: var(--font-title);
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 30%, var(--primary) 70%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        header .badge {
+            display: inline-block;
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            color: var(--primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.1);
+        }
+
+        /* Glassmorphism Cards */
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 2.25rem;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* Form Layout */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            header h1 {
+                font-size: 2.2rem;
+            }
+        }
+
+        .versus-divider {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-color);
+            border: 1px solid var(--card-border);
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-title);
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            z-index: 5;
+        }
+
+        @media (max-width: 768px) {
+            .versus-divider {
+                display: none;
+            }
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            position: relative;
+        }
+
+        .input-group label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group label.local {
+            color: var(--primary);
+        }
+
+        .input-group label.visitante {
+            color: var(--secondary);
+        }
+
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .team-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 0.9rem 1.2rem;
+            font-family: var(--font-body);
+            font-size: 1.05rem;
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+
+        .team-input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.07);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+        }
+
+        .input-group.visitante-group .team-input:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.15);
+        }
+
+        /* Autocomplete suggestions */
+        .suggestions-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #111827;
+            border: 1px solid var(--card-border);
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 0.75rem 1.2rem;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-size: 0.95rem;
+        }
+
+        .suggestion-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--primary);
+        }
+
+        /* Neutral Field Toggle */
+        .neutral-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .neutral-label {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .neutral-label span:first-child {
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+
+        .neutral-label span:last-child {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Switch Toggle */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 54px;
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .4s;
+            border-radius: 34px;
+            border: 1px solid var(--card-border);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* Predict Button */
+        .btn-predict {
+            width: 100%;
+            margin-top: 2rem;
+            padding: 1rem 2rem;
+            font-family: var(--font-title);
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #000000;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px var(--primary-glow);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .btn-predict:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(0, 229, 255, 0.5);
+            background: linear-gradient(90deg, #ffffff, var(--primary));
+        }
+
+        .btn-predict:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .btn-predict:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            box-shadow: none;
+            cursor: not-allowed;
+            border: 1px solid var(--card-border);
+        }
+
+        /* Results Section */
+        .results-container {
+            display: none;
+            flex-direction: column;
+            gap: 2rem;
+            animation: fadeInUp 0.6s ease;
+        }
+
+        /* Recommended Badge Banner */
+        .prediction-banner {
+            text-align: center;
+            padding: 1.75rem;
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.1) 0%, rgba(255, 0, 127, 0.05) 100%);
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            border-radius: 16px;
+            box-shadow: 0 0 25px rgba(0, 229, 255, 0.05);
+        }
+
+        .prediction-banner h3 {
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .prediction-banner .prediction-text {
+            font-family: var(--font-title);
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+
+        /* Probability Bars */
+        .probability-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .prob-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .prob-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .prob-bar-bg {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            height: 18px;
+            border-radius: 9px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .prob-bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 9px;
+            transition: width 1.2s cubic-bezier(0.1, 0.8, 0.2, 1);
+        }
+
+        .prob-bar-fill.local {
+            background: linear-gradient(90deg, var(--primary), #0088ff);
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+        }
+
+        .prob-bar-fill.draw {
+            background: linear-gradient(90deg, #9ca3af, #d1d5db);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .prob-bar-fill.away {
+            background: linear-gradient(90deg, var(--secondary), #bd00ff);
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
+        }
+
+        /* Stats Comparison Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 640px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .team-stat-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .team-stat-card.local-card {
+            border-left: 4px solid var(--primary);
+        }
+
+        .team-stat-card.away-card {
+            border-left: 4px solid var(--secondary);
+        }
+
+        .stat-card-title {
+            font-family: var(--font-title);
+            font-size: 1.35rem;
+            font-weight: 700;
+        }
+
+        .stat-card-title.local-title {
+            color: var(--primary);
+        }
+
+        .stat-card-title.away-title {
+            color: var(--secondary);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .stat-val-name {
+            color: var(--text-muted);
+        }
+
+        .stat-val-num {
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+
+        .stat-diff-badge {
+            text-align: center;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .stat-diff-badge span {
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        /* Error state */
+        .error-message {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #f87171;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Custom details styles */
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+        details summary {
+            list-style: none;
+        }
+        details[open] #details-toggle-icon {
+            transform: rotate(180deg);
+            color: var(--primary) !important;
+        }
+
+        /* Tab Styles */
+        .tabs-container {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            animation: fadeInDown 0.8s ease;
+        }
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            padding: 0.8rem 1.6rem;
+            border-radius: 12px;
+            font-family: var(--font-title);
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tab-btn:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(0, 229, 255, 0.2);
+        }
+        .tab-btn.active {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            color: #080c14;
+            border-color: transparent;
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        /* Groups Grid Styles */
+        .groups-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        @media (max-width: 900px) {
+            .groups-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 480px) {
+            .groups-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .group-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .group-card-header {
+            font-family: var(--font-title);
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--primary);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 0.25rem;
+            text-align: center;
+        }
+        .group-teams-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            font-size: 0.88rem;
+        }
+        .group-team-item {
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-color);
+            padding: 0.15rem 0;
+        }
+
+        /* Simulation Loading State */
+        .sim-loader-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            padding: 3rem 1rem;
+            text-align: center;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.05);
+            border-top: 5px solid var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            box-shadow: 0 0 15px rgba(0, 255, 135, 0.2);
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loader-text {
+            font-family: var(--font-title);
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        /* Simulation Results Table */
+        .sim-results-table-wrapper {
+            overflow-x: auto;
+            margin-top: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+        }
+        .sim-results-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.92rem;
+        }
+        .sim-results-table th {
+            background: rgba(255, 255, 255, 0.03);
+            font-family: var(--font-title);
+            font-weight: 700;
+            color: var(--primary);
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--card-border);
+            white-space: nowrap;
+        }
+        .sim-results-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            color: var(--text-color);
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+        .sim-results-table tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+        .sim-results-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Probability cell with bar */
+        .sim-prob-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 100px;
+        }
+        .sim-prob-num {
+            font-weight: 700;
+            width: 45px;
+            text-align: right;
+        }
+        .sim-prob-bar-bg {
+            background: rgba(255, 255, 255, 0.04);
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            flex-grow: 1;
+            width: 50px;
+        }
+        .sim-prob-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+        }
+        .sim-prob-bar-fill.r16 { background: #00e5ff; }
+        .sim-prob-bar-fill.qf { background: #0088ff; }
+        .sim-prob-bar-fill.sf { background: #bd00ff; }
+        .sim-prob-bar-fill.final { background: #ff007f; }
+        .sim-prob-bar-fill.champ { background: var(--accent); box-shadow: 0 0 8px rgba(0, 255, 135, 0.3); }
+        /* Bracket Styles */
+        .bracket-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            padding: 1.5rem 0.5rem;
+            margin-top: 0.5rem;
+            cursor: grab;
+            user-select: none;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) rgba(255,255,255,0.02);
+        }
+        .bracket-wrapper::-webkit-scrollbar {
+            height: 8px;
+        }
+        .bracket-wrapper::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.02);
+            border-radius: 4px;
+        }
+        .bracket-wrapper::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+        .bracket-wrapper:active {
+            cursor: grabbing;
+        }
+        .bracket-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-width: 2100px;
+            gap: 1.5rem;
+            padding: 1rem;
+            position: relative;
+        }
+        .bracket-round {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            height: 900px;
+            width: 200px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .bracket-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            width: 220px;
+            flex-shrink: 0;
+        }
+        .bracket-match {
+            background: rgba(17, 24, 39, 0.85);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 0.6rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .bracket-match:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 229, 255, 0.15);
+            transform: scale(1.02);
+        }
+        .bracket-team {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            padding: 0.15rem 0.3rem;
+            border-radius: 4px;
+        }
+        .bracket-team.winner {
+            color: #ffffff;
+            font-weight: 700;
+            background: rgba(0, 229, 255, 0.05);
+        }
+        .bracket-team.loser {
+            opacity: 0.6;
+        }
+        .bracket-team-info {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .bracket-team-score {
+            font-family: var(--font-title);
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #ffffff;
+            min-width: 15px;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+        .bracket-pen-score {
+            font-size: 0.72rem;
+            color: var(--accent);
+            font-weight: bold;
+        }
+        .bracket-probability-badge {
+            font-size: 0.68rem;
+            color: var(--primary);
+            background: rgba(0, 229, 255, 0.1);
+            padding: 0.05rem 0.25rem;
+            border-radius: 3px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+        .champion-showcase {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 0, 127, 0.08) 100%);
+            border: 2px solid #ffd700;
+            border-radius: 14px;
+            padding: 1rem;
+            text-align: center;
+            width: 100%;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+        .champion-title {
+            font-family: var(--font-title);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: #ffd700;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            margin-bottom: 0.4rem;
+        }
+        .champion-name {
+            font-family: var(--font-title);
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        /* Schedule Toggles */
+        .btn-toggle-schedule {
+            font-size: 0.72rem;
+            color: var(--primary);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            text-align: center;
+            margin-top: 0.5rem;
+            width: 100%;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0.35rem 0 0.1rem 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            display: block;
+        }
+        .btn-toggle-schedule:hover {
+            color: #ffffff;
+        }
+        .group-matches-schedule {
+            display: none;
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px dashed rgba(255, 255, 255, 0.08);
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .schedule-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.2rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+        }
+        .schedule-item:last-child {
+            border-bottom: none;
+        }
+        .schedule-venue {
+            color: var(--primary);
+            font-weight: 500;
+            font-size: 0.65rem;
+            margin-left: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Header -->
+    <header>
+        <span class="badge">Inteligencia Artificial</span>
+        <h1>Predictor de Partidos FIFA</h1>
+        <p>Modelo de Red Neuronal (Multilayer Perceptron) entrenado con más de 49,000 partidos</p>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-container">
+        <button id="tab-btn-predict" class="tab-btn active" onclick="switchTab('predict-tab')">Predicción Individual</button>
+        <button id="tab-btn-simulate" class="tab-btn" onclick="switchTab('simulate-tab')">Simulador de Mundial</button>
+    </div>
+
+    <!-- Predict Content Wrapper -->
+    <div id="predict-tab" class="tab-content active">
+        <!-- Main Card -->
+        <main class="glass-card">
+        <!-- Form -->
+        <div class="form-grid">
+            <!-- Versus overlay -->
+            <div class="versus-divider">VS</div>
+
+            <!-- Equipo 1 -->
+            <div class="input-group local-group">
+                <label class="local" for="home-team">Equipo 1 (Local/A)</label>
+                <div class="input-wrapper">
+                    <input type="text" id="home-team" class="team-input" placeholder="Escribe un país (ej. Argentina)..." autocomplete="off">
+                    <div id="home-suggestions" class="suggestions-list"></div>
+                </div>
+            </div>
+
+            <!-- Equipo 2 -->
+            <div class="input-group visitante-group">
+                <label class="visitante" for="away-team">Equipo 2 (Visitante/B)</label>
+                <div class="input-wrapper">
+                    <input type="text" id="away-team" class="team-input" placeholder="Escribe un país (ej. France)..." autocomplete="off">
+                    <div id="away-suggestions" class="suggestions-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Neutral field option -->
+        <div class="neutral-row">
+            <div class="neutral-label">
+                <span>¿Es campo neutral?</span>
+                <span>Activo: sede neutral (sin ventaja de localía). Inactivo: el Equipo 1 juega en su propio estadio con ventaja de campo.</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="neutral-toggle" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <!-- Predict Button -->
+        <button id="predict-btn" class="btn-predict" disabled>Predecir Resultado</button>
+
+        <!-- API Error Alert -->
+        <div id="error-alert" class="error-message"></div>
+    </main>
+
+    <!-- Info Card (Expandable) -->
+    <div class="glass-card info-card" style="margin-top: 1rem; padding: 1.5rem 2.25rem; transition: all 0.3s ease;">
+        <details id="info-details">
+            <summary style="font-family: var(--font-title); font-size: 1.15rem; font-weight: 700; cursor: pointer; color: var(--primary); display: flex; align-items: center; justify-content: space-between; user-select: none;">
+                <span>¿Cómo funciona la IA para predecir? (Ver variables)</span>
+                <span id="details-toggle-icon" style="transition: transform 0.3s ease; font-size: 0.8rem; color: var(--text-muted);">MÁS INFO ▼</span>
+            </summary>
+            <div style="margin-top: 1.25rem; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem; font-size: 0.92rem; line-height: 1.6; color: var(--text-muted);">
+                <div>
+                    <strong style="color: var(--text-color); display: block; margin-bottom: 0.25rem; font-size: 1rem;">1. Fuerza de las Selecciones (Sistema ELO)</strong>
+                    El ELO calcula dinámicamente el nivel de cada país sumando puntos si gana y restándolos si pierde, basándose en la dificultad del rival y la diferencia de goles. La <strong>Diferencia de ELO</strong> es la variable de mayor peso en la predicción.
+                </div>
+                <div>
+                    <strong style="color: var(--text-color); display: block; margin-bottom: 0.25rem; font-size: 1rem;">2. Racha Reciente (Últimos 5 Partidos)</strong>
+                    El modelo extrae la racha competitiva analizando la media de goles anotados por partido (potencia de ataque), goles encajados (solidez defensiva) y porcentaje de victorias recientes de ambos equipos justo antes del encuentro.
+                </div>
+                <div>
+                    <strong style="color: var(--text-color); display: block; margin-bottom: 0.25rem; font-size: 1rem;">3. Ventaja de Localía</strong>
+                    Si desactivas el campo neutral, el Equipo 1 (Local) recibe una bonificación de <strong>+100 puntos ELO</strong> para reflejar la ventaja estadística e histórica de jugar en su propio estadio con su público.
+                </div>
+                <div>
+                    <strong style="color: var(--text-color); display: block; margin-bottom: 0.25rem; font-size: 1rem;">4. Valor de Plantilla (Transfermarkt)</strong>
+                    El valor financiero estimado del plantel de cada selección (obtenido de Transfermarkt o calculado mediante ELO para partidos históricos). Ayuda a la red neuronal a capturar la calidad técnica individual del plantel.
+                </div>
+                <div style="background: rgba(0, 229, 255, 0.04); border: 1px dashed rgba(0,229,255,0.15); padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.88rem; color: var(--primary);">
+                    * La red neuronal ha aprendido a relacionar y equilibrar todos estos factores a partir de un entrenamiento con más de 49,000 partidos internacionales jugados desde 1872.
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <!-- Results Card (grows dynamically) -->
+    <div id="results-card" class="glass-card results-container">
+        <!-- Recommended Result -->
+        <div class="prediction-banner">
+            <h3>Resultado Recomendado</h3>
+            <div id="prediction-text" class="prediction-text">Victoria de Argentina</div>
+        </div>
+
+        <!-- Probabilities -->
+        <div class="probability-section">
+            <!-- Home Prob -->
+            <div class="prob-row">
+                <div class="prob-label">
+                    <span id="prob-home-label">Victoria Equipo 1</span>
+                    <span id="prob-home-val">0.00%</span>
+                </div>
+                <div class="prob-bar-bg">
+                    <div id="prob-home-bar" class="prob-bar-fill local"></div>
+                </div>
+            </div>
+
+            <!-- Draw Prob -->
+            <div class="prob-row">
+                <div class="prob-label">
+                    <span>Empate</span>
+                    <span id="prob-draw-val">0.00%</span>
+                </div>
+                <div class="prob-bar-bg">
+                    <div id="prob-draw-bar" class="prob-bar-fill draw"></div>
+                </div>
+            </div>
+
+            <!-- Away Prob -->
+            <div class="prob-row">
+                <div class="prob-label">
+                    <span id="prob-away-label">Victoria Equipo 2</span>
+                    <span id="prob-away-val">0.00%</span>
+                </div>
+                <div class="prob-bar-bg">
+                    <div id="prob-away-bar" class="prob-bar-fill away"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="stats-diff-badge" class="stat-diff-badge">
+            Diferencia de ELO: <span>+0.0</span> a favor del Local
+        </div>
+
+        <!-- H2H Summary Panel -->
+        <div id="h2h-summary-card" class="glass-card" style="padding: 1.25rem 1.5rem; background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255,255,255,0.03); border-radius: 12px; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.95rem;">
+            <div style="font-weight: 700; color: var(--primary); font-family: var(--font-title); font-size: 1.05rem;">Historial Cara a Cara (Últimos 5 encuentros)</div>
+            <div id="h2h-summary-text" style="color: var(--text-color);">No hay registro de enfrentamientos previos en el dataset.</div>
+            <div style="display: flex; gap: 1rem; color: var(--text-muted); font-size: 0.88rem; margin-top: 0.25rem;">
+                <span>Victoria Local: <strong id="h2h-home-pct" style="color: var(--primary);">33%</strong></span>
+                <span>Empate: <strong id="h2h-draw-pct" style="color: #9ca3af;">33%</strong></span>
+                <span>Victoria Visitante: <strong id="h2h-away-pct" style="color: var(--secondary);">33%</strong></span>
+            </div>
+        </div>
+
+        <!-- Market Value Comparison Panel -->
+        <div id="market-value-card" class="glass-card" style="padding: 1.25rem 1.5rem; background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255,255,255,0.03); border-radius: 12px; margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.95rem;">
+            <div style="font-weight: 700; color: var(--primary); font-family: var(--font-title); font-size: 1.05rem;">Comparativa de Valor de Plantilla</div>
+            <div style="display: flex; justify-content: space-between; font-weight: 600; font-family: var(--font-title);">
+                <span id="market-value-home-label">Local: 0.0M €</span>
+                <span id="market-value-diff-text" style="color: var(--accent);">Diferencia: +0.0M €</span>
+                <span id="market-value-away-label">Visitante: 0.0M €</span>
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.05); height: 12px; border-radius: 6px; overflow: hidden; width: 100%; display: flex;">
+                <div id="market-value-home-bar" style="background: linear-gradient(90deg, var(--primary), #0088ff); height: 100%; width: 50%; transition: width 1.2s cubic-bezier(0.1, 0.8, 0.2, 1); box-shadow: 0 0 10px rgba(0, 229, 255, 0.35);"></div>
+                <div id="market-value-away-bar" style="background: linear-gradient(90deg, #bd00ff, var(--secondary)); height: 100%; width: 50%; transition: width 1.2s cubic-bezier(0.1, 0.8, 0.2, 1); box-shadow: 0 0 10px rgba(255, 0, 127, 0.35);"></div>
+            </div>
+        </div>
+
+        <!-- Poisson Goals & Exact Scores Panel -->
+        <div id="goals-prediction-card" class="glass-card" style="padding: 1.25rem 1.5rem; background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255,255,255,0.03); border-radius: 12px; margin-top: 1rem; display: flex; flex-direction: column; gap: 1rem; font-size: 0.95rem;">
+            <div style="font-weight: 700; color: var(--accent); font-family: var(--font-title); font-size: 1.05rem;">Predicción de Goles y Marcadores</div>
+            
+            <!-- Expected Goals -->
+            <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.02); padding: 0.75rem 1rem; border-radius: 8px;">
+                <div style="display: flex; flex-direction: column; gap: 0.15rem; width: 40%;">
+                    <span id="goals-home-title" style="font-weight: 600; color: var(--text-color);">Equipo 1</span>
+                    <span style="font-size: 0.82rem; color: var(--text-muted);">Goles Esperados (xG)</span>
+                </div>
+                <div id="goals-home-val" style="font-size: 1.8rem; font-weight: 800; color: var(--primary); font-family: var(--font-title);">1.5</div>
+                <div style="font-size: 1.2rem; font-weight: 600; color: var(--text-muted); font-family: var(--font-title);">vs</div>
+                <div id="goals-away-val" style="font-size: 1.8rem; font-weight: 800; color: var(--secondary); font-family: var(--font-title);">1.2</div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.15rem; width: 40%;">
+                    <span id="goals-away-title" style="font-weight: 600; color: var(--text-color); text-align: right;">Equipo 2</span>
+                    <span style="font-size: 0.82rem; color: var(--text-muted); text-align: right;">Goles Esperados (xG)</span>
+                </div>
+            </div>
+
+            <!-- Exact Scores -->
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="font-weight: 600; color: var(--text-muted); font-size: 0.88rem; text-transform: uppercase; letter-spacing: 0.5px;">Top 3 Marcadores Exactos Más Probables</div>
+                <div id="exact-scores-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <!-- Rellenado por JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Side by Side Stats -->
+        <div class="stats-grid">
+            <!-- Home Card -->
+            <div class="team-stat-card local-card">
+                <div id="stats-home-title" class="stat-card-title local-title">Equipo 1</div>
+                
+                <div class="stat-row">
+                    <span class="stat-val-name">Rating ELO</span>
+                    <span id="stat-home-elo" class="stat-val-num">1500.0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-val-name">Rendimiento (Forma)</span>
+                    <span id="stat-home-form" class="stat-val-num">50%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-val-name">Goles anotados p/p</span>
+                    <span id="stat-home-goals-scored" class="stat-val-num">0.0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-val-name">Goles recibidos p/p</span>
+                    <span id="stat-home-goals-conceded" class="stat-val-num">0.0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-val-name">Valor de Plantilla</span>
+                    <span id="stat-home-value" class="stat-val-num">0.0M €</span>
+                </div>
+            </div>
+
+            <!-- Away Card -->
+            <div class="team-stat-card away-card">
+                <div id="stats-away-title" class="stat-card-title away-title">Equipo 2</div>
+                
+                <div class="stat-row">
+                    <span class="stat-val-name">Rating ELO</span>
+                    <span id="stat-away-elo" class="stat-val-num">1500.0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-val-name">Rendimiento (Forma)</span>
+                    <span id="stat-away-form" class="stat-val-num">50%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-val-name">Goles anotados p/p</span>
+                    <span id="stat-away-goals-scored" class="stat-val-num">0.0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-val-name">Goles recibidos p/p</span>
+                    <span id="stat-away-goals-conceded" class="stat-val-num">0.0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-val-name">Valor de Plantilla</span>
+                    <span id="stat-away-value" class="stat-val-num">0.0M €</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div> <!-- Fin predict-tab -->
+
+    <!-- Simulator Content -->
+    <div id="simulate-tab" class="tab-content">
+        <!-- Main Simulator Card -->
+        <main class="glass-card">
+            <h2 style="font-family: var(--font-title); font-size: 1.8rem; font-weight: 800; color: #ffffff; margin-bottom: 0.5rem; text-align: center;">Simulador de Copa del Mundo</h2>
+            <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; text-align: center; margin-bottom: 1.5rem;">
+                Simula el torneo completo del Mundial 2026. Nuestro motor ejecutará <strong>5,000 simulaciones de Monte Carlo</strong> en segundos, jugando todos los partidos de la fase de grupos y llaves de eliminación directa según las probabilidades de la Red Neuronal y la distribución de Poisson.
+            </p>
+
+            <!-- Formato Oficial 2026 Info Box -->
+            <div style="background: rgba(0, 229, 255, 0.03); border: 1px solid rgba(0, 229, 255, 0.15); padding: 1.25rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; font-size: 0.92rem; line-height: 1.6; color: var(--text-color); display: flex; align-items: flex-start; gap: 0.75rem; box-shadow: 0 4px 20px rgba(0, 229, 255, 0.03);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 0.15rem;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <div>
+                    La Copa Mundial de la FIFA 2026, celebrada en Canadá, Estados Unidos y México, cuenta con un formato histórico de 48 selecciones distribuidas en 12 grupos (de la A a la L). A diferencia de ediciones anteriores, cada grupo está compuesto por cuatro equipos. Los dos primeros de cada zona y los ocho mejores terceros avanzarán a los Dieciseisavos de Final.
+                </div>
+            </div>
+
+            <!-- Groups Showcase -->
+            <div style="font-family: var(--font-title); font-size: 1.15rem; font-weight: 700; color: var(--primary); margin-top: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">Grupos del Mundial (2026)</div>
+            <div class="groups-grid">
+                <!-- Grupo A -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo A</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>México</span><span style="color:var(--text-muted);">A1</span></div>
+                        <div class="group-team-item"><span>Sudáfrica</span><span style="color:var(--text-muted);">A2</span></div>
+                        <div class="group-team-item"><span>Corea del Sur</span><span style="color:var(--text-muted);">A3</span></div>
+                        <div class="group-team-item"><span>Chequia</span><span style="color:var(--text-muted);">A4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'A')">Ver Partidos ▼</button>
+                    <div id="schedule-A" class="group-matches-schedule">
+                        <div class="schedule-item"><span>11 Jun: 🇲🇽 MEX vs 🇿🇦 RSA</span><span class="schedule-venue">CDMX</span></div>
+                        <div class="schedule-item"><span>12 Jun: 🇰🇷 KOR vs 🇨🇿 CZE</span><span class="schedule-venue">MTY</span></div>
+                        <div class="schedule-item"><span>18 Jun: 🇲🇽 MEX vs 🇰🇷 KOR</span><span class="schedule-venue">GDL</span></div>
+                        <div class="schedule-item"><span>18 Jun: 🇨🇿 CZE vs 🇿🇦 RSA</span><span class="schedule-venue">ATL</span></div>
+                        <div class="schedule-item"><span>24 Jun: 🇿🇦 RSA vs 🇰🇷 KOR</span><span class="schedule-venue">ATL</span></div>
+                        <div class="schedule-item"><span>24 Jun: 🇨🇿 CZE vs 🇲🇽 MEX</span><span class="schedule-venue">GDL</span></div>
+                    </div>
+                </div>
+                <!-- Grupo B -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo B</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>Canadá</span><span style="color:var(--text-muted);">B1</span></div>
+                        <div class="group-team-item"><span>Bosnia y Herz.</span><span style="color:var(--text-muted);">B2</span></div>
+                        <div class="group-team-item"><span>Catar</span><span style="color:var(--text-muted);">B3</span></div>
+                        <div class="group-team-item"><span>Suiza</span><span style="color:var(--text-muted);">B4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'B')">Ver Partidos ▼</button>
+                    <div id="schedule-B" class="group-matches-schedule">
+                        <div class="schedule-item"><span>11 Jun: 🇨🇦 CAN vs 🇧🇦 BIH</span><span class="schedule-venue">VAN</span></div>
+                        <div class="schedule-item"><span>13 Jun: 🇶🇦 QAT vs 🇨🇭 SUI</span><span class="schedule-venue">STC</span></div>
+                        <div class="schedule-item"><span>18 Jun: 🇨🇭 SUI vs 🇧🇦 BIH</span><span class="schedule-venue">LA</span></div>
+                        <div class="schedule-item"><span>18 Jun: 🇨🇦 CAN vs 🇶🇦 QAT</span><span class="schedule-venue">VAN</span></div>
+                        <div class="schedule-item"><span>24 Jun: 🇨🇭 SUI vs 🇨🇦 CAN</span><span class="schedule-venue">VAN</span></div>
+                        <div class="schedule-item"><span>24 Jun: 🇧🇦 BIH vs 🇶🇦 QAT</span><span class="schedule-venue">SEA</span></div>
+                    </div>
+                </div>
+                <!-- Grupo C -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo C</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>Brasil</span><span style="color:var(--text-muted);">C1</span></div>
+                        <div class="group-team-item"><span>Marruecos</span><span style="color:var(--text-muted);">C2</span></div>
+                        <div class="group-team-item"><span>Haití</span><span style="color:var(--text-muted);">C3</span></div>
+                        <div class="group-team-item"><span>Escocia</span><span style="color:var(--text-muted);">C4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'C')">Ver Partidos ▼</button>
+                    <div id="schedule-C" class="group-matches-schedule">
+                        <div class="schedule-item"><span>13 Jun: 🇧🇷 BRA vs 🇲🇦 MAR</span><span class="schedule-venue">NJ</span></div>
+                        <div class="schedule-item"><span>13 Jun: 🇭🇹 HAI vs 🏴 SCO</span><span class="schedule-venue">BOS</span></div>
+                        <div class="schedule-item"><span>19 Jun: 🏴 SCO vs 🇲🇦 MAR</span><span class="schedule-venue">BOS</span></div>
+                        <div class="schedule-item"><span>19 Jun: 🇧🇷 BRA vs 🇭🇹 HAI</span><span class="schedule-venue">PHI</span></div>
+                        <div class="schedule-item"><span>24 Jun: 🇧🇷 BRA vs 🏴 SCO</span><span class="schedule-venue">MIA</span></div>
+                        <div class="schedule-item"><span>24 Jun: 🇲🇦 MAR vs 🇭🇹 HAI</span><span class="schedule-venue">ATL</span></div>
+                    </div>
+                </div>
+                <!-- Grupo D -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo D</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>Estados Unidos</span><span style="color:var(--text-muted);">D1</span></div>
+                        <div class="group-team-item"><span>Paraguay</span><span style="color:var(--text-muted);">D2</span></div>
+                        <div class="group-team-item"><span>Australia</span><span style="color:var(--text-muted);">D3</span></div>
+                        <div class="group-team-item"><span>Turquía</span><span style="color:var(--text-muted);">D4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'D')">Ver Partidos ▼</button>
+                    <div id="schedule-D" class="group-matches-schedule">
+                        <div class="schedule-item"><span>12 Jun: 🇺🇸 USA vs 🇵🇾 PAR</span><span class="schedule-venue">LA</span></div>
+                        <div class="schedule-item"><span>13 Jun: 🇦🇺 AUS vs 🇹🇷 TUR</span><span class="schedule-venue">VAN</span></div>
+                        <div class="schedule-item"><span>19 Jun: 🇹🇷 TUR vs 🇵🇾 PAR</span><span class="schedule-venue">STC</span></div>
+                        <div class="schedule-item"><span>19 Jun: 🇺🇸 USA vs 🇦🇺 AUS</span><span class="schedule-venue">SEA</span></div>
+                        <div class="schedule-item"><span>25 Jun: 🇹🇷 TUR vs 🇺🇸 USA</span><span class="schedule-venue">LA</span></div>
+                        <div class="schedule-item"><span>25 Jun: 🇵🇾 PAR vs 🇦🇺 AUS</span><span class="schedule-venue">STC</span></div>
+                    </div>
+                </div>
+                <!-- Grupo E -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo E</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>Alemania</span><span style="color:var(--text-muted);">E1</span></div>
+                        <div class="group-team-item"><span>Ecuador</span><span style="color:var(--text-muted);">E2</span></div>
+                        <div class="group-team-item"><span>Costa de Marfil</span><span style="color:var(--text-muted);">E3</span></div>
+                        <div class="group-team-item"><span>Curazao</span><span style="color:var(--text-muted);">E4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'E')">Ver Partidos ▼</button>
+                    <div id="schedule-E" class="group-matches-schedule">
+                        <div class="schedule-item"><span>14 Jun: 🇩🇪 GER vs 🇨🇼 CUW</span><span class="schedule-venue">HOU</span></div>
+                        <div class="schedule-item"><span>14 Jun: 🇪🇨 ECU vs 🇨🇮 CIV</span><span class="schedule-venue">PHI</span></div>
+                        <div class="schedule-item"><span>20 Jun: 🇩🇪 GER vs 🇨🇮 CIV</span><span class="schedule-venue">KC</span></div>
+                        <div class="schedule-item"><span>20 Jun: 🇨🇼 CUW vs 🇪🇨 ECU</span><span class="schedule-venue">PHI</span></div>
+                        <div class="schedule-item"><span>25 Jun: 🇪🇨 ECU vs 🇩🇪 GER</span><span class="schedule-venue">NJ</span></div>
+                        <div class="schedule-item"><span>25 Jun: 🇨🇮 CIV vs 🇨🇼 CUW</span><span class="schedule-venue">PHI</span></div>
+                    </div>
+                </div>
+                <!-- Grupo F -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo F</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>Países Bajos</span><span style="color:var(--text-muted);">F1</span></div>
+                        <div class="group-team-item"><span>Japón</span><span style="color:var(--text-muted);">F2</span></div>
+                        <div class="group-team-item"><span>Suecia</span><span style="color:var(--text-muted);">F3</span></div>
+                        <div class="group-team-item"><span>Túnez</span><span style="color:var(--text-muted);">F4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'F')">Ver Partidos ▼</button>
+                    <div id="schedule-F" class="group-matches-schedule">
+                        <div class="schedule-item"><span>14 Jun: 🇳🇱 NED vs 🇯🇵 JPN</span><span class="schedule-venue">ARL</span></div>
+                        <div class="schedule-item"><span>14 Jun: 🇸🇪 SWE vs 🇹🇳 TUN</span><span class="schedule-venue">MTY</span></div>
+                        <div class="schedule-item"><span>20 Jun: 🇹🇳 TUN vs 🇯🇵 JPN</span><span class="schedule-venue">MTY</span></div>
+                        <div class="schedule-item"><span>20 Jun: 🇳🇱 NED vs 🇸🇪 SWE</span><span class="schedule-venue">ARL</span></div>
+                        <div class="schedule-item"><span>25 Jun: 🇯🇵 JPN vs 🇸🇪 SWE</span><span class="schedule-venue">ARL</span></div>
+                        <div class="schedule-item"><span>25 Jun: 🇹🇳 TUN vs 🇳🇱 NED</span><span class="schedule-venue">KC</span></div>
+                    </div>
+                </div>
+                <!-- Grupo G -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo G</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>Bélgica</span><span style="color:var(--text-muted);">G1</span></div>
+                        <div class="group-team-item"><span>Egipto</span><span style="color:var(--text-muted);">G2</span></div>
+                        <div class="group-team-item"><span>Irán</span><span style="color:var(--text-muted);">G3</span></div>
+                        <div class="group-team-item"><span>Nueva Zelanda</span><span style="color:var(--text-muted);">G4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'G')">Ver Partidos ▼</button>
+                    <div id="schedule-G" class="group-matches-schedule">
+                        <div class="schedule-item"><span>15 Jun: 🇧🇪 BEL vs 🇪🇬 EGY</span><span class="schedule-venue">SEA</span></div>
+                        <div class="schedule-item"><span>15 Jun: 🇮🇷 IRN vs 🇳🇿 NZL</span><span class="schedule-venue">LA</span></div>
+                        <div class="schedule-item"><span>21 Jun: 🇧🇪 BEL vs 🇮🇷 IRN</span><span class="schedule-venue">LA</span></div>
+                        <div class="schedule-item"><span>21 Jun: 🇳🇿 NZL vs 🇪🇬 EGY</span><span class="schedule-venue">VAN</span></div>
+                        <div class="schedule-item"><span>26 Jun: 🇪🇬 EGY vs 🇮🇷 IRN</span><span class="schedule-venue">SEA</span></div>
+                        <div class="schedule-item"><span>26 Jun: 🇳🇿 NZL vs 🇧🇪 BEL</span><span class="schedule-venue">VAN</span></div>
+                    </div>
+                </div>
+                <!-- Grupo H -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo H</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>España</span><span style="color:var(--text-muted);">H1</span></div>
+                        <div class="group-team-item"><span>Uruguay</span><span style="color:var(--text-muted);">H2</span></div>
+                        <div class="group-team-item"><span>Arabia Saudí</span><span style="color:var(--text-muted);">H3</span></div>
+                        <div class="group-team-item"><span>Cabo Verde</span><span style="color:var(--text-muted);">H4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'H')">Ver Partidos ▼</button>
+                    <div id="schedule-H" class="group-matches-schedule">
+                        <div class="schedule-item"><span>15 Jun: 🇪🇸 ESP vs 🇨🇻 CPV</span><span class="schedule-venue">MIA</span></div>
+                        <div class="schedule-item"><span>15 Jun: 🇺🇾 URU vs 🇸🇦 KSA</span><span class="schedule-venue">MIA</span></div>
+                        <div class="schedule-item"><span>21 Jun: 🇪🇸 ESP vs 🇸🇦 KSA</span><span class="schedule-venue">ATL</span></div>
+                        <div class="schedule-item"><span>21 Jun: 🇺🇾 URU vs 🇨🇻 CPV</span><span class="schedule-venue">MIA</span></div>
+                        <div class="schedule-item"><span>26 Jun: 🇨🇻 CPV vs 🇸🇦 KSA</span><span class="schedule-venue">HOU</span></div>
+                        <div class="schedule-item"><span>26 Jun: 🇺🇾 URU vs 🇪🇸 ESP</span><span class="schedule-venue">GDL</span></div>
+                    </div>
+                </div>
+                <!-- Grupo I -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo I</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>Francia</span><span style="color:var(--text-muted);">I1</span></div>
+                        <div class="group-team-item"><span>Senegal</span><span style="color:var(--text-muted);">I2</span></div>
+                        <div class="group-team-item"><span>Irak</span><span style="color:var(--text-muted);">I3</span></div>
+                        <div class="group-team-item"><span>Noruega</span><span style="color:var(--text-muted);">I4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'I')">Ver Partidos ▼</button>
+                    <div id="schedule-I" class="group-matches-schedule">
+                        <div class="schedule-item"><span>16 Jun: 🇫🇷 FRA vs 🇸🇳 SEN</span><span class="schedule-venue">PHI</span></div>
+                        <div class="schedule-item"><span>16 Jun: 🇮🇶 IRQ vs 🇳🇴 NOR</span><span class="schedule-venue">BOS</span></div>
+                        <div class="schedule-item"><span>22 Jun: 🇳🇴 NOR vs 🇸🇳 SEN</span><span class="schedule-venue">NJ</span></div>
+                        <div class="schedule-item"><span>22 Jun: 🇫🇷 FRA vs 🇮🇶 IRQ</span><span class="schedule-venue">PHI</span></div>
+                        <div class="schedule-item"><span>26 Jun: 🇳🇴 NOR vs 🇫🇷 FRA</span><span class="schedule-venue">BOS</span></div>
+                        <div class="schedule-item"><span>26 Jun: 🇸🇳 SEN vs 🇮🇶 IRQ</span><span class="schedule-venue">TOR</span></div>
+                    </div>
+                </div>
+                <!-- Grupo J -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo J</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>Argentina</span><span style="color:var(--text-muted);">J1</span></div>
+                        <div class="group-team-item"><span>Austria</span><span style="color:var(--text-muted);">J2</span></div>
+                        <div class="group-team-item"><span>Argelia</span><span style="color:var(--text-muted);">J3</span></div>
+                        <div class="group-team-item"><span>Jordania</span><span style="color:var(--text-muted);">J4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'J')">Ver Partidos ▼</button>
+                    <div id="schedule-J" class="group-matches-schedule">
+                        <div class="schedule-item"><span>16 Jun: 🇦🇷 ARG vs 🇩🇿 ALG</span><span class="schedule-venue">KC</span></div>
+                        <div class="schedule-item"><span>17 Jun: 🇦🇹 AUT vs 🇯🇴 JOR</span><span class="schedule-venue">STC</span></div>
+                        <div class="schedule-item"><span>22 Jun: 🇦🇷 ARG vs 🇦🇹 AUT</span><span class="schedule-venue">ARL</span></div>
+                        <div class="schedule-item"><span>23 Jun: 🇯🇴 JOR vs 🇩🇿 ALG</span><span class="schedule-venue">STC</span></div>
+                        <div class="schedule-item"><span>27 Jun: 🇯🇴 JOR vs 🇦🇷 ARG</span><span class="schedule-venue">ARL</span></div>
+                        <div class="schedule-item"><span>27 Jun: 🇩🇿 ALG vs 🇦🇹 AUT</span><span class="schedule-venue">KC</span></div>
+                    </div>
+                </div>
+                <!-- Grupo K -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo K</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>Portugal</span><span style="color:var(--text-muted);">K1</span></div>
+                        <div class="group-team-item"><span>Colombia</span><span style="color:var(--text-muted);">K2</span></div>
+                        <div class="group-team-item"><span>Uzbekistán</span><span style="color:var(--text-muted);">K3</span></div>
+                        <div class="group-team-item"><span>RD del Congo</span><span style="color:var(--text-muted);">K4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'K')">Ver Partidos ▼</button>
+                    <div id="schedule-K" class="group-matches-schedule">
+                        <div class="schedule-item"><span>17 Jun: 🇵🇹 POR vs 🇨🇩 COD</span><span class="schedule-venue">HOU</span></div>
+                        <div class="schedule-item"><span>17 Jun: 🇺🇿 UZB vs 🇨🇴 COL</span><span class="schedule-venue">CDMX</span></div>
+                        <div class="schedule-item"><span>23 Jun: 🇵🇹 POR vs 🇺🇿 UZB</span><span class="schedule-venue">HOU</span></div>
+                        <div class="schedule-item"><span>23 Jun: 🇨🇴 COL vs 🇨🇩 COD</span><span class="schedule-venue">GDL</span></div>
+                        <div class="schedule-item"><span>27 Jun: 🇨🇴 COL vs 🇵🇹 POR</span><span class="schedule-venue">MIA</span></div>
+                        <div class="schedule-item"><span>27 Jun: 🇨🇩 COD vs 🇺🇿 UZB</span><span class="schedule-venue">ATL</span></div>
+                    </div>
+                </div>
+                <!-- Grupo L -->
+                <div class="group-card">
+                    <div class="group-card-header">Grupo L</div>
+                    <div class="group-teams-list">
+                        <div class="group-team-item"><span>Inglaterra</span><span style="color:var(--text-muted);">L1</span></div>
+                        <div class="group-team-item"><span>Croacia</span><span style="color:var(--text-muted);">L2</span></div>
+                        <div class="group-team-item"><span>Ghana</span><span style="color:var(--text-muted);">L3</span></div>
+                        <div class="group-team-item"><span>Panamá</span><span style="color:var(--text-muted);">L4</span></div>
+                    </div>
+                    <button class="btn-toggle-schedule" onclick="toggleGroupSchedule(this, 'L')">Ver Partidos ▼</button>
+                    <div id="schedule-L" class="group-matches-schedule">
+                        <div class="schedule-item"><span>17 Jun: 🏴󠁧󠁢󠁥󠁮󠁧󠁿 ENG vs 🇭🇷 CRO</span><span class="schedule-venue">ARL</span></div>
+                        <div class="schedule-item"><span>17 Jun: 🇬🇭 GHA vs 🇵🇦 PAN</span><span class="schedule-venue">TOR</span></div>
+                        <div class="schedule-item"><span>23 Jun: 🏴󠁧󠁢󠁥󠁮󠁧󠁿 ENG vs 🇬🇭 GHA</span><span class="schedule-venue">BOS</span></div>
+                        <div class="schedule-item"><span>23 Jun: 🇵🇦 PAN vs 🇭🇷 CRO</span><span class="schedule-venue">TOR</span></div>
+                        <div class="schedule-item"><span>27 Jun: 🇵🇦 PAN vs 🏴󠁧󠁢󠁥󠁮󠁧󠁿 ENG</span><span class="schedule-venue">NJ</span></div>
+                        <div class="schedule-item"><span>27 Jun: 🇭🇷 CRO vs 🇬🇭 GHA</span><span class="schedule-venue">PHI</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Sim Button -->
+            <button id="sim-start-btn" class="btn-predict" style="background: linear-gradient(90deg, var(--accent), #00ffc4); box-shadow: 0 0 20px rgba(0, 255, 135, 0.25); margin-top: 2rem;">Simular Copa del Mundo</button>
+            
+            <!-- Loading Animation -->
+            <div id="sim-loader" class="sim-loader-container">
+                <div class="spinner"></div>
+                <div id="sim-loader-text" class="loader-text">Jugando fase de grupos...</div>
+            </div>
+        </main>
+
+        <!-- Simulation Results Card -->
+        <div id="sim-results-card" class="glass-card" style="display: none; margin-top: 1.5rem; animation: fadeInUp 0.6s ease; padding: 2rem 1.5rem;">
+            <!-- Tab switch inside results -->
+            <div style="display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                <button id="btn-view-bracket" class="tab-btn active" style="padding: 0.5rem 1.2rem; font-size: 0.95rem; border-radius: 8px;" onclick="switchSimView('bracket')">Diagrama de Llaves</button>
+                <button id="btn-view-table" class="tab-btn" style="padding: 0.5rem 1.2rem; font-size: 0.95rem; border-radius: 8px;" onclick="switchSimView('table')">Tabla de Probabilidades</button>
+            </div>
+
+            <!-- Bracket View (Default) -->
+            <div id="sim-bracket-view" style="display: block;">
+                <div style="font-family: var(--font-title); font-size: 1.5rem; font-weight: 800; color: #ffffff; text-align: center; margin-bottom: 0.25rem;">Cuadro Eliminatorio (Simulación Real)</div>
+                <p style="color: var(--text-muted); font-size: 0.88rem; text-align: center; margin-bottom: 1.25rem;">Resultados y cruces detallados de una simulación completa del mundial. Arrastra horizontalmente para ver las llaves.</p>
+                
+                <div class="bracket-wrapper" id="bracket-drag-container">
+                    <div class="bracket-container" id="bracket-canvas">
+                        <!-- Rellenado dinámicamente con Javascript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table View -->
+            <div id="sim-table-view" style="display: none;">
+                <div style="font-family: var(--font-title); font-size: 1.5rem; font-weight: 800; color: #ffffff; text-align: center; margin-bottom: 0.25rem;">Tabla de Probabilidades Finales</div>
+                <p style="color: var(--text-muted); font-size: 0.88rem; text-align: center; margin-bottom: 1.25rem;">Resultados acumulados de salir campeón y avanzar de ronda tras 5,000 simulaciones de Monte Carlo.</p>
+                
+                <div class="sim-results-table-wrapper">
+                    <table class="sim-results-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Selección</th>
+                                <th>Valor</th>
+                                <th>R32 (%)</th>
+                                <th>Octavos (%)</th>
+                                <th>Cuartos (%)</th>
+                                <th>Semis (%)</th>
+                                <th>Final (%)</th>
+                                <th>Campeón (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sim-table-body">
+                            <!-- Rellenado dinámicamente con Javascript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Sistema de navegación de Pestañas
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById(tabId).classList.add('active');
+        if (tabId === 'predict-tab') {
+            document.getElementById('tab-btn-predict').classList.add('active');
+        } else {
+            document.getElementById('tab-btn-simulate').classList.add('active');
+        }
+    }
+
+    let allTeamsList = [];
+    const homeInput = document.getElementById('home-team');
+    const awayInput = document.getElementById('away-team');
+    const homeSugs = document.getElementById('home-suggestions');
+    const awaySugs = document.getElementById('away-suggestions');
+    const predictBtn = document.getElementById('predict-btn');
+    const errorAlert = document.getElementById('error-alert');
+    const resultsCard = document.getElementById('results-card');
+
+    // Cargar equipos al iniciar la página
+    window.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/api/teams');
+            const data = await res.json();
+            if (data.success) {
+                allTeamsList = data.teams;
+            }
+        } catch (e) {
+            showError("No se pudo conectar con el servidor local para cargar las selecciones.");
+        }
+    });
+
+    // Configurar autocompletado para Home Team
+    homeInput.addEventListener('input', () => {
+        handleAutocomplete(homeInput, homeSugs);
+        validateInputs();
+    });
+
+    // Configurar autocompletado para Away Team
+    awayInput.addEventListener('input', () => {
+        handleAutocomplete(awayInput, awaySugs);
+        validateInputs();
+    });
+
+    // Cerrar sugerencias al hacer clic fuera
+    document.addEventListener('click', (e) => {
+        if (!homeInput.contains(e.target) && !homeSugs.contains(e.target)) {
+            homeSugs.style.display = 'none';
+        }
+        if (!awayInput.contains(e.target) && !awaySugs.contains(e.target)) {
+            awaySugs.style.display = 'none';
+        }
+    });
+
+    // Autocomplete Logic
+    function handleAutocomplete(input, sugsContainer) {
+        const query = input.value.trim().toLowerCase();
+        if (!query) {
+            sugsContainer.style.display = 'none';
+            return;
+        }
+
+        const filtered = allTeamsList.filter(team => team.toLowerCase().includes(query)).slice(0, 5);
+        if (filtered.length === 0) {
+            sugsContainer.style.display = 'none';
+            return;
+        }
+
+        sugsContainer.innerHTML = '';
+        filtered.forEach(team => {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.textContent = team;
+            div.addEventListener('click', () => {
+                input.value = team;
+                sugsContainer.style.display = 'none';
+                validateInputs();
+            });
+            sugsContainer.appendChild(div);
+        });
+        sugsContainer.style.display = 'block';
+    }
+
+    // Validar entradas de usuario
+    function validateInputs() {
+        const homeVal = homeInput.value.trim();
+        const awayVal = awayInput.value.trim();
+
+        const isHomeValid = allTeamsList.some(t => t.toLowerCase() === homeVal.toLowerCase());
+        const isAwayValid = allTeamsList.some(t => t.toLowerCase() === awayVal.toLowerCase());
+
+        const notSame = homeVal.toLowerCase() !== awayVal.toLowerCase();
+
+        predictBtn.disabled = !(isHomeValid && isAwayValid && notSame);
+        
+        if (homeVal && awayVal && !notSame) {
+            showError("Un equipo no puede jugar contra sí mismo.");
+        } else {
+            hideError();
+        }
+    }
+
+    // Mostrar errores
+    function showError(msg) {
+        errorAlert.textContent = msg;
+        errorAlert.style.display = 'block';
+    }
+
+    function hideError() {
+        errorAlert.style.display = 'none';
+    }
+
+    // Click Predict
+    predictBtn.addEventListener('click', async () => {
+        const homeVal = homeInput.value.trim();
+        const awayVal = awayInput.value.trim();
+        const isNeutral = document.getElementById('neutral-toggle').checked ? 1 : 0;
+
+        // Encontrar nombres con el casing correcto del dataset
+        const home_team = allTeamsList.find(t => t.toLowerCase() === homeVal.toLowerCase());
+        const away_team = allTeamsList.find(t => t.toLowerCase() === awayVal.toLowerCase());
+
+        predictBtn.disabled = true;
+        predictBtn.textContent = 'Procesando...';
+        hideError();
+
+        try {
+            const res = await fetch('/api/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ home_team, away_team, neutral: isNeutral })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                renderResults(data);
+            } else {
+                showError(data.error || "Ocurrió un error al calcular la predicción.");
+            }
+        } catch (e) {
+            showError("Error al conectar con la API de predicción.");
+        } finally {
+            predictBtn.disabled = false;
+            predictBtn.textContent = 'Predecir Resultado';
+        }
+    });
+
+    // Renderizar resultados en el frontend
+    function renderResults(data) {
+        const p = data.prediction;
+        const s = data.stats;
+
+        // Banner principal
+        document.getElementById('prediction-text').textContent = p.recommended;
+
+        // Etiquetas
+        document.getElementById('prob-home-label').textContent = `Victoria ${s.home.name}`;
+        document.getElementById('prob-away-label').textContent = `Victoria ${s.away.name}`;
+
+        // Valores numéricos y barras
+        document.getElementById('prob-home-val').textContent = `${(p.home_prob * 100).toFixed(2)}%`;
+        document.getElementById('prob-draw-val').textContent = `${(p.draw_prob * 100).toFixed(2)}%`;
+        document.getElementById('prob-away-val').textContent = `${(p.away_prob * 100).toFixed(2)}%`;
+
+        document.getElementById('prob-home-bar').style.width = `${p.home_prob * 100}%`;
+        document.getElementById('prob-draw-bar').style.width = `${p.draw_prob * 100}%`;
+        document.getElementById('prob-away-bar').style.width = `${p.away_prob * 100}%`;
+
+        // Diferencia de ELO
+        const diffText = s.elo_diff >= 0 ? `+${s.elo_diff} a favor de ${s.home.name}` : `${s.elo_diff} a favor de ${s.away.name}`;
+        document.getElementById('stats-diff-badge').innerHTML = `Diferencia de ELO: <span>${diffText}</span>`;
+
+        // H2H stats
+        const h2h = s.h2h;
+        const h2hText = document.getElementById('h2h-summary-text');
+        const h2hHomePct = document.getElementById('h2h-home-pct');
+        const h2hDrawPct = document.getElementById('h2h-draw-pct');
+        const h2hAwayPct = document.getElementById('h2h-away-pct');
+
+        if (h2h.total > 0) {
+            h2hText.textContent = `En sus últimos ${h2h.total} partidos: ${s.home.name} ganó ${h2h.home_wins}, ${s.away.name} ganó ${h2h.away_wins} y empataron ${h2h.draws}.`;
+            h2hHomePct.textContent = `${h2h.home_wr}%`;
+            h2hDrawPct.textContent = `${h2h.draw_r}%`;
+            h2hAwayPct.textContent = `${h2h.away_wr}%`;
+        } else {
+            h2hText.textContent = `No hay registro de enfrentamientos directos previos en el dataset.`;
+            h2hHomePct.textContent = `33.3% (Neutro)`;
+            h2hDrawPct.textContent = `33.3% (Neutro)`;
+            h2hAwayPct.textContent = `33.3% (Neutro)`;
+        }
+
+        // Market Value stats
+        const valHome = s.home.market_value;
+        const valAway = s.away.market_value;
+        const valDiff = s.market_value_diff;
+        
+        document.getElementById('market-value-home-label').textContent = `${s.home.name}: ${valHome.toFixed(1)}M €`;
+        document.getElementById('market-value-away-label').textContent = `${s.away.name}: ${valAway.toFixed(1)}M €`;
+        
+        const diffValText = valDiff >= 0 ? `Diferencia: +${valDiff.toFixed(1)}M € a favor de ${s.home.name}` : `Diferencia: ${valDiff.toFixed(1)}M € a favor de ${s.away.name}`;
+        document.getElementById('market-value-diff-text').textContent = diffValText;
+        
+        const totalVal = valHome + valAway;
+        if (totalVal > 0) {
+            const pctHome = (valHome / totalVal) * 100;
+            const pctAway = (valAway / totalVal) * 100;
+            document.getElementById('market-value-home-bar').style.width = `${pctHome}%`;
+            document.getElementById('market-value-away-bar').style.width = `${pctAway}%`;
+        } else {
+            document.getElementById('market-value-home-bar').style.width = `50%`;
+            document.getElementById('market-value-away-bar').style.width = `50%`;
+        }
+
+        // Poisson Goals & Scores
+        const goals = data.goals;
+        document.getElementById('goals-home-title').textContent = s.home.name;
+        document.getElementById('goals-away-title').textContent = s.away.name;
+        document.getElementById('goals-home-val').textContent = goals.expected_goals.home.toFixed(2);
+        document.getElementById('goals-away-val').textContent = goals.expected_goals.away.toFixed(2);
+
+        const scoresList = document.getElementById('exact-scores-list');
+        scoresList.innerHTML = '';
+        
+        goals.exact_scores.forEach(item => {
+            const pct = (item.prob * 100).toFixed(2);
+            
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.flexDirection = 'column';
+            row.style.gap = '0.25rem';
+            
+            row.innerHTML = `
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 600;">
+                    <span>Marcador ${item.score}</span>
+                    <span style="color: var(--accent);">${pct}%</span>
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.04); height: 8px; border-radius: 4px; overflow: hidden; width: 100%;">
+                    <div style="background: linear-gradient(90deg, var(--accent), #00ffc4); height: 100%; width: ${pct}%; border-radius: 4px; box-shadow: 0 0 10px rgba(0, 255, 135, 0.2);"></div>
+                </div>
+            `;
+            scoresList.appendChild(row);
+        });
+
+        // Estadísticas Local
+        document.getElementById('stats-home-title').textContent = s.home.name;
+        document.getElementById('stat-home-elo').textContent = s.home.elo.toFixed(1);
+        document.getElementById('stat-home-form').textContent = `${s.home.win_rate}%`;
+        document.getElementById('stat-home-goals-scored').textContent = s.home.goals_scored.toFixed(2);
+        document.getElementById('stat-home-goals-conceded').textContent = s.home.goals_conceded.toFixed(2);
+        document.getElementById('stat-home-value').textContent = `${s.home.market_value.toFixed(1)}M €`;
+
+        // Estadísticas Visitante
+        document.getElementById('stats-away-title').textContent = s.away.name;
+        document.getElementById('stat-away-elo').textContent = s.away.elo.toFixed(1);
+        document.getElementById('stat-away-form').textContent = `${s.away.win_rate}%`;
+        document.getElementById('stat-away-goals-scored').textContent = s.away.goals_scored.toFixed(2);
+        document.getElementById('stat-away-goals-conceded').textContent = s.away.goals_conceded.toFixed(2);
+        document.getElementById('stat-away-value').textContent = `${s.away.market_value.toFixed(1)}M €`;
+
+        // Mostrar tarjeta de resultados
+        resultsCard.style.display = 'flex';
+        // Auto scroll a los resultados
+        resultsCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // --- LÓGICA DEL SIMULADOR DE COPA DEL MUNDO ---
+    const teamTranslations = {
+        'Mexico': { name: 'México', flag: '🇲🇽' },
+        'South Africa': { name: 'Sudáfrica', flag: '🇿🇦' },
+        'South Korea': { name: 'Corea del Sur', flag: '🇰🇷' },
+        'Czech Republic': { name: 'Chequia', flag: '🇨🇿' },
+        'Canada': { name: 'Canadá', flag: '🇨🇦' },
+        'Bosnia and Herzegovina': { name: 'Bosnia y Herz.', flag: '🇧🇦' },
+        'Qatar': { name: 'Catar', flag: '🇶🇦' },
+        'Switzerland': { name: 'Suiza', flag: '🇨🇭' },
+        'Brazil': { name: 'Brasil', flag: '🇧🇷' },
+        'Morocco': { name: 'Marruecos', flag: '🇲🇦' },
+        'Haiti': { name: 'Haití', flag: '🇭🇹' },
+        'Scotland': { name: 'Escocia', flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿' },
+        'United States': { name: 'Estados Unidos', flag: '🇺🇸' },
+        'Paraguay': { name: 'Paraguay', flag: '🇵🇾' },
+        'Australia': { name: 'Australia', flag: '🇦🇺' },
+        'Turkey': { name: 'Turquía', flag: '🇹🇷' },
+        'Germany': { name: 'Alemania', flag: '🇩🇪' },
+        'Ecuador': { name: 'Ecuador', flag: '🇪🇨' },
+        'Ivory Coast': { name: 'Costa de Marfil', flag: '🇨🇮' },
+        'Curaçao': { name: 'Curazao', flag: '🇨🇼' },
+        'Netherlands': { name: 'Países Bajos', flag: '🇳🇱' },
+        'Japan': { name: 'Japón', flag: '🇯🇵' },
+        'Sweden': { name: 'Suecia', flag: '🇸🇪' },
+        'Tunisia': { name: 'Túnez', flag: '🇹🇳' },
+        'Belgium': { name: 'Bélgica', flag: '🇧🇪' },
+        'Egypt': { name: 'Egipto', flag: '🇪🇬' },
+        'Iran': { name: 'Irán', flag: '🇮🇷' },
+        'New Zealand': { name: 'Nueva Zelanda', flag: '🇳🇿' },
+        'Spain': { name: 'España', flag: '🇪🇸' },
+        'Uruguay': { name: 'Uruguay', flag: '🇺🇾' },
+        'Saudi Arabia': { name: 'Arabia Saudí', flag: '🇸🇦' },
+        'Cape Verde': { name: 'Cabo Verde', flag: '🇨🇻' },
+        'France': { name: 'Francia', flag: '🇫🇷' },
+        'Senegal': { name: 'Senegal', flag: '🇸🇳' },
+        'Iraq': { name: 'Irak', flag: '🇮🇶' },
+        'Norway': { name: 'Noruega', flag: '🇳🇴' },
+        'Argentina': { name: 'Argentina', flag: '🇦🇷' },
+        'Austria': { name: 'Austria', flag: '🇦🇹' },
+        'Algeria': { name: 'Argelia', flag: '🇩🇿' },
+        'Jordan': { name: 'Jordania', flag: '🇯🇴' },
+        'Portugal': { name: 'Portugal', flag: '🇵🇹' },
+        'Colombia': { name: 'Colombia', flag: '🇨🇴' },
+        'Uzbekistan': { name: 'Uzbekistán', flag: '🇺🇿' },
+        'DR Congo': { name: 'RD del Congo', flag: '🇨🇩' },
+        'England': { name: 'Inglaterra', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+        'Croatia': { name: 'Croacia', flag: '🇭🇷' },
+        'Ghana': { name: 'Ghana', flag: '🇬🇭' },
+        'Panama': { name: 'Panamá', flag: '🇵🇦' }
+    };
+
+    function switchSimView(viewType) {
+        const bracketBtn = document.getElementById('btn-view-bracket');
+        const tableBtn = document.getElementById('btn-view-table');
+        const bracketView = document.getElementById('sim-bracket-view');
+        const tableView = document.getElementById('sim-table-view');
+        
+        if (viewType === 'bracket') {
+            bracketBtn.classList.add('active');
+            tableBtn.classList.remove('active');
+            bracketView.style.display = 'block';
+            tableView.style.display = 'none';
+        } else {
+            tableBtn.classList.add('active');
+            bracketBtn.classList.remove('active');
+            tableView.style.display = 'block';
+            bracketView.style.display = 'none';
+        }
+    }
+
+    const simStartBtn = document.getElementById('sim-start-btn');
+    const simLoader = document.getElementById('sim-loader');
+    const simLoaderText = document.getElementById('sim-loader-text');
+    const simResultsCard = document.getElementById('sim-results-card');
+    const simTableBody = document.getElementById('sim-table-body');
+
+    simStartBtn.addEventListener('click', async () => {
+        simStartBtn.disabled = true;
+        simResultsCard.style.display = 'none';
+        simLoader.style.display = 'flex';
+        
+        // Efecto visual de textos cargando
+        const texts = [
+            "Inicializando base de datos de 48 selecciones...",
+            "Calculando ELO y valores de mercado pre-partido...",
+            "Simulando fase de grupos de 5,000 mundiales...",
+            "Ejecutando llaves de octavos, cuartos y semifinales...",
+            "Finalizando torneos de Monte Carlo y compilando estadísticas..."
+        ];
+        
+        let textIdx = 0;
+        simLoaderText.textContent = texts[0];
+        const textInterval = setInterval(() => {
+            textIdx++;
+            if (textIdx < texts.length) {
+                simLoaderText.textContent = texts[textIdx];
+            }
+        }, 650);
+
+        try {
+            const res = await fetch('/api/simulate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            
+            clearInterval(textInterval);
+            
+            if (data.success) {
+                renderSimulationResults(data);
+            } else {
+                alert(data.error || "Ocurrió un error al simular el mundial.");
+            }
+        } catch (e) {
+            clearInterval(textInterval);
+            alert("No se pudo conectar con el servidor local para correr la simulación.");
+        } finally {
+            simLoader.style.display = 'none';
+            simStartBtn.disabled = false;
+        }
+    });
+
+    function renderSimulationResults(data) {
+        const results = data.results;
+        const bracket = data.bracket;
+
+        // 1. Renderizar tabla de Monte Carlo
+        simTableBody.innerHTML = '';
+        results.forEach((r, idx) => {
+            const tr = document.createElement('tr');
+            
+            let medal = idx + 1;
+            if (idx === 0) medal = '🥇';
+            else if (idx === 1) medal = '🥈';
+            else if (idx === 2) medal = '🥉';
+            
+            const trans = teamTranslations[r.team] || { name: r.team, flag: '' };
+            
+            tr.innerHTML = `
+                <td style="font-weight: 700; font-family: var(--font-title);">${medal}</td>
+                <td style="font-weight: 600; font-family: var(--font-title); color: #ffffff;">${trans.flag} ${trans.name} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:normal; margin-left:0.25rem;">(ELO: ${r.elo.toFixed(0)})</span></td>
+                <td style="font-size: 0.88rem; color: var(--text-muted);">${r.market_value.toFixed(0)}M €</td>
+                <td>
+                    <div class="sim-prob-cell">
+                        <span class="sim-prob-num">${r.r32_prob.toFixed(1)}%</span>
+                        <div class="sim-prob-bar-bg"><div class="sim-prob-bar-fill" style="width: ${r.r32_prob}%; background: #9ca3af;"></div></div>
+                    </div>
+                </td>
+                <td>
+                    <div class="sim-prob-cell">
+                        <span class="sim-prob-num">${r.r16_prob.toFixed(1)}%</span>
+                        <div class="sim-prob-bar-bg"><div class="sim-prob-bar-fill r16" style="width: ${r.r16_prob}%"></div></div>
+                    </div>
+                </td>
+                <td>
+                    <div class="sim-prob-cell">
+                        <span class="sim-prob-num">${r.qf_prob.toFixed(1)}%</span>
+                        <div class="sim-prob-bar-bg"><div class="sim-prob-bar-fill qf" style="width: ${r.qf_prob}%"></div></div>
+                    </div>
+                </td>
+                <td>
+                    <div class="sim-prob-cell">
+                        <span class="sim-prob-num">${r.sf_prob.toFixed(1)}%</span>
+                        <div class="sim-prob-bar-bg"><div class="sim-prob-bar-fill sf" style="width: ${r.sf_prob}%"></div></div>
+                    </div>
+                </td>
+                <td>
+                    <div class="sim-prob-cell">
+                        <span class="sim-prob-num">${r.final_prob.toFixed(1)}%</span>
+                        <div class="sim-prob-bar-bg"><div class="sim-prob-bar-fill final" style="width: ${r.final_prob}%"></div></div>
+                    </div>
+                </td>
+                <td>
+                    <div class="sim-prob-cell">
+                        <span class="sim-prob-num" style="color: var(--accent);">${r.champion_prob.toFixed(1)}%</span>
+                        <div class="sim-prob-bar-bg"><div class="sim-prob-bar-fill champ" style="width: ${r.champion_prob}%"></div></div>
+                    </div>
+                </td>
+            `;
+            simTableBody.appendChild(tr);
+        });
+
+        // 2. Renderizar diagrama de llaves
+        const canvas = document.getElementById('bracket-canvas');
+        canvas.innerHTML = '';
+
+        function getTeamHtml(teamName, score, pen, resultsList, isWinner) {
+            if (!teamName) {
+                return `
+                    <div class="bracket-team">
+                        <div class="bracket-team-info">TBD</div>
+                        <div class="bracket-team-score">-</div>
+                    </div>
+                `;
+            }
+            const trans = teamTranslations[teamName] || { name: teamName, flag: '🏳️' };
+            const mcInfo = resultsList.find(r => r.team === teamName);
+            const champProb = mcInfo ? mcInfo.champion_prob.toFixed(1) : '0.0';
+            
+            const scoreStr = score !== null && score !== undefined ? score : '';
+            const penStr = pen !== null && pen !== undefined ? ` <span class="bracket-pen-score">(${pen})</span>` : '';
+            const isWinnerClass = isWinner ? 'winner' : 'loser';
+            
+            return `
+                <div class="bracket-team ${isWinnerClass}">
+                    <div class="bracket-team-info">
+                        <span style="font-size: 1.05rem;">${trans.flag}</span>
+                        <span style="max-width: 110px; overflow: hidden; text-overflow: ellipsis;" title="${trans.name}">${trans.name}</span>
+                    </div>
+                    <span class="bracket-probability-badge">${champProb}%</span>
+                    <div class="bracket-team-score">${scoreStr}${penStr}</div>
+                </div>
+            `;
+        }
+
+        function renderMatchCard(match, resultsList) {
+            if (!match) return '<div class="bracket-match">TBD</div>';
+            
+            const isHomeWinner = match.winner === match.home;
+            const isAwayWinner = match.winner === match.away;
+            
+            const homeHtml = getTeamHtml(match.home, match.home_score, match.home_pen, resultsList, isHomeWinner);
+            const awayHtml = getTeamHtml(match.away, match.away_score, match.away_pen, resultsList, isAwayWinner);
+            
+            return `
+                <div class="bracket-match">
+                    ${homeHtml}
+                    ${awayHtml}
+                </div>
+            `;
+        }
+
+        // --- CONSTRUIR DIAGRAMA DE LLAVES (9 COLUMNAS FLAT) ---
+        
+        // 1. R32 Left (Matches 0-7)
+        const r32Left = document.createElement('div');
+        r32Left.className = 'bracket-round r32';
+        for (let i = 0; i < 8; i++) {
+            r32Left.innerHTML += renderMatchCard(bracket.r32[i], results);
+        }
+        
+        // 2. R16 Left (Matches 0-3)
+        const r16Left = document.createElement('div');
+        r16Left.className = 'bracket-round r16';
+        for (let i = 0; i < 4; i++) {
+            r16Left.innerHTML += renderMatchCard(bracket.r16[i], results);
+        }
+        
+        // 3. QF Left (Matches 0-1)
+        const qfLeft = document.createElement('div');
+        qfLeft.className = 'bracket-round qf';
+        for (let i = 0; i < 2; i++) {
+            qfLeft.innerHTML += renderMatchCard(bracket.qf[i], results);
+        }
+        
+        // 4. SF Left (Match 0)
+        const sfLeft = document.createElement('div');
+        sfLeft.className = 'bracket-round sf';
+        sfLeft.innerHTML += renderMatchCard(bracket.sf[0], results);
+        
+        // 5. Center Column (Champion Showcase + Final Match)
+        const center = document.createElement('div');
+        center.className = 'bracket-center';
+        
+        const champTrans = teamTranslations[bracket.champion] || { name: bracket.champion, flag: '🏆' };
+        const mcChamp = results.find(r => r.team === bracket.champion);
+        const champProb = mcChamp ? mcChamp.champion_prob.toFixed(1) : '0.0';
+        
+        const champHtml = `
+            <div class="champion-showcase">
+                <div class="champion-title">🏆 Campeón 🏆</div>
+                <div class="champion-name">
+                    <span style="font-size: 2.2rem; filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.4));">${champTrans.flag}</span>
+                    <span style="text-align: center; text-transform: uppercase; letter-spacing: 0.5px;">${champTrans.name}</span>
+                    <span style="font-size: 0.82rem; color: #ffd700; font-weight: normal; margin-top: 0.15rem;">Simulado (${champProb}%)</span>
+                </div>
+            </div>
+        `;
+        const finalHtml = renderMatchCard(bracket.final, results);
+        center.innerHTML = champHtml + finalHtml;
+        
+        // 6. SF Right (Match 1)
+        const sfRight = document.createElement('div');
+        sfRight.className = 'bracket-round sf';
+        sfRight.innerHTML += renderMatchCard(bracket.sf[1], results);
+        
+        // 7. QF Right (Matches 2-3)
+        const qfRight = document.createElement('div');
+        qfRight.className = 'bracket-round qf';
+        for (let i = 2; i < 4; i++) {
+            qfRight.innerHTML += renderMatchCard(bracket.qf[i], results);
+        }
+        
+        // 8. R16 Right (Matches 4-7)
+        const r16Right = document.createElement('div');
+        r16Right.className = 'bracket-round r16';
+        for (let i = 4; i < 8; i++) {
+            r16Right.innerHTML += renderMatchCard(bracket.r16[i], results);
+        }
+        
+        // 9. R32 Right (Matches 8-15)
+        const r32Right = document.createElement('div');
+        r32Right.className = 'bracket-round r32';
+        for (let i = 8; i < 16; i++) {
+            r32Right.innerHTML += renderMatchCard(bracket.r32[i], results);
+        }
+        
+        // Appendeando en orden secuencial horizontal
+        canvas.appendChild(r32Left);
+        canvas.appendChild(r16Left);
+        canvas.appendChild(qfLeft);
+        canvas.appendChild(sfLeft);
+        canvas.appendChild(center);
+        canvas.appendChild(sfRight);
+        canvas.appendChild(qfRight);
+        canvas.appendChild(r16Right);
+        canvas.appendChild(r32Right);
+
+        // Activar vista por defecto: Diagrama de llaves
+        switchSimView('bracket');
+
+        // Mostrar tarjeta de resultados
+        simResultsCard.style.display = 'block';
+        simResultsCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Drag to scroll logic for bracket container
+    const slider = document.getElementById('bracket-drag-container');
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    slider.addEventListener('mousedown', (e) => {
+        isDown = true;
+        slider.style.cursor = 'grabbing';
+        startX = e.pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+    });
+    slider.addEventListener('mouseleave', () => {
+        isDown = false;
+        slider.style.cursor = 'grab';
+    });
+    slider.addEventListener('mouseup', () => {
+        isDown = false;
+        slider.style.cursor = 'grab';
+    });
+    slider.addEventListener('mousemove', (e) => {
+        if(!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - slider.offsetLeft;
+        const walk = (x - startX) * 1.5; // scroll speed multiplier
+        slider.scrollLeft = scrollLeft - walk;
+    });
+
+    // Toggle group stage matches calendar dropdown
+    function toggleGroupSchedule(btn, groupId) {
+        const scheduleDiv = document.getElementById(`schedule-${groupId}`);
+        if (scheduleDiv.style.display === 'none' || !scheduleDiv.style.display) {
+            scheduleDiv.style.display = 'block';
+            btn.textContent = 'Ocultar ▲';
+        } else {
+            scheduleDiv.style.display = 'none';
+            btn.textContent = 'Ver Partidos ▼';
+        }
+    }
+</script>
+
+</body>
+</html>
